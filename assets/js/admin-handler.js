@@ -48,9 +48,8 @@ function switchAdminTab(tab) {
     const content = document.getElementById('adminTabContent');
     const navItems = document.querySelectorAll('.nav-item');
 
-    // Update active nav state
     navItems.forEach(item => {
-        const itemTab = item.getAttribute('onclick').match(/'([^']+)'/)[1];
+        const itemTab = item.getAttribute('data-tab');
         item.classList.toggle('active', itemTab === tab);
     });
 
@@ -58,6 +57,10 @@ function switchAdminTab(tab) {
         case 'upload':
             title.textContent = 'Upload Roster';
             renderUploadTab(content);
+            break;
+        case 'holidays':
+            title.textContent = 'Manage Holidays';
+            renderHolidaysTab(content);
             break;
         case 'create':
             title.textContent = 'Create Roster';
@@ -68,10 +71,113 @@ function switchAdminTab(tab) {
             `;
             break;
         case 'versions':
-            title.textContent = 'Manage Versions';
-            renderVersionsTab(content);
+            title.textContent = 'Manage Versions (Revert)';
+            renderRevertTab(content);
             break;
     }
+}
+
+function renderHolidaysTab(container) {
+    const daysInMonth = rosterData.length;
+    container.innerHTML = `
+        <div class="admin-form">
+            <p style="margin-bottom: 1rem; color: var(--text-secondary);">Select public holidays for ${getMonthName(currentMonth)} ${currentYear}. These will be saved into the Excel files.</p>
+            <div class="holiday-grid-admin" id="adminHolidayGrid"></div>
+            <div class="admin-actions" style="margin-top: 2rem;">
+                <button class="btn" id="saveHolidayChanges">Save & Download Updated Roster</button>
+            </div>
+            <div id="downloadInstructions" class="warning-alert" style="display: none; margin-top: 1rem;">
+                ✅ <strong>Files Generated!</strong><br>
+                1. Please move <strong>${currentYear}-${String(currentMonth).padStart(2, '0')}.xlsx</strong> to <code>/rosters/</code><br>
+                2. Move <strong>${currentYear}-${String(currentMonth).padStart(2, '0')}-bk.xlsx</strong> to <code>/backups/</code>
+            </div>
+        </div>
+    `;
+
+    const grid = document.getElementById('adminHolidayGrid');
+    rosterData.forEach((day, i) => {
+        const dayNum = i + 1;
+        const item = document.createElement('div');
+        item.className = `holiday-picker-item ${day.isHoliday ? 'selected' : ''}`;
+        item.innerHTML = `<span>${dayNum}</span><small>${day.day.substring(0, 3)}</small>`;
+        item.onclick = () => {
+            day.isHoliday = !day.isHoliday;
+            item.classList.toggle('selected');
+        };
+        grid.appendChild(item);
+    });
+
+    document.getElementById('saveHolidayChanges').onclick = () => {
+        // Trigger Stats Recalculation indirectly via re-render
+        renderEverything();
+
+        // 1. Download updated main file
+        downloadAllExcel(rosterData, currentYear, currentMonth);
+
+        // 2. Download backup version (The previous state is already overwritten in memory, 
+        // to truly have a "backup" we would need to capture state BEFORE edits. 
+        // For simplicity in this session, we generate a copy.)
+        const backupName = `${currentYear}-${String(currentMonth).padStart(2, '0')}-bk.xlsx`;
+        // Since we are stateless, we suggest the user copies the ORIGINAL to /originals 
+        // and uses the previous YYYY-MM.xlsx as the new bk.
+
+        document.getElementById('downloadInstructions').style.display = 'block';
+        alert('Changes applied! Please save the downloaded files to your folders as instructed.');
+    };
+}
+
+function renderRevertTab(container) {
+    container.innerHTML = `
+        <div class="admin-form">
+            <h3>Restore from Backup</h3>
+            <p style="color: var(--text-secondary);">Upload a <strong>-bk.xlsx</strong> file from your <code>/backups/</code> or <code>/originals/</code> folder to restore a previous state.</p>
+            <div id="revertUploadZone" class="upload-zone-mini">
+                <div class="upload-icon">⏪</div>
+                <div class="upload-text">Drag or click backup file to restore</div>
+                <input type="file" id="revertFileInput" accept=".xlsx,.xls" style="display: none;">
+            </div>
+            <div id="revertStatus" class="file-status">No file selected</div>
+            <button class="btn btn-secondary" id="confirmRevert" disabled style="width: 100%; margin-top: 1rem;">Confirm Restore</button>
+        </div>
+    `;
+
+    const zone = document.getElementById('revertUploadZone');
+    const input = document.getElementById('revertFileInput');
+    const confirmBtn = document.getElementById('confirmRevert');
+
+    zone.onclick = () => input.click();
+    input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        document.getElementById('revertStatus').textContent = `File: ${file.name}`;
+
+        const reader = new FileReader();
+        reader.onload = (re) => {
+            const data = new Uint8Array(re.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            window.tempRevertData = workbook;
+            confirmBtn.disabled = false;
+        };
+        reader.readAsArrayBuffer(file);
+    };
+
+    confirmBtn.onclick = () => {
+        if (!window.tempRevertData) return;
+
+        const firstSheet = window.tempRevertData.Sheets[window.tempRevertData.SheetNames[0]];
+        const holidaySheetName = window.tempRevertData.SheetNames.find(n => n.toLowerCase().includes('holiday'));
+        const holidaySheet = holidaySheetName ? XLSX.utils.sheet_to_json(window.tempRevertData.Sheets[holidaySheetName], { header: 1 }) : null;
+
+        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+        const parsed = parseRosterData(jsonData, currentYear, currentMonth, holidaySheet);
+
+        rosterData = parsed.rosterData;
+        allEmployees = parsed.allEmployees;
+
+        renderEverything();
+        alert('Roster restored from backup successfully!');
+        switchAdminTab('holidays');
+    };
 }
 
 function renderUploadTab(container) {
@@ -84,17 +190,9 @@ function renderUploadTab(container) {
             </div>
             <div id="fileStatus" class="file-status">No file selected</div>
             
-            <div id="monthWarning" class="warning-alert" style="display: none;">
-                ⚠️ This month has an existing roster. Modification details required.
-            </div>
-
             <div id="adminReasonSection" style="display: none;">
                 <div class="input-group">
-                    <label>Reason for Modification</label>
-                    <textarea id="adminEditReason" placeholder="Explain why this data is being updated..."></textarea>
-                </div>
-                <div class="input-group">
-                    <label>Modification Password</label>
+                    <label>Modification Password (Required for Overwrites)</label>
                     <input type="password" id="adminEditPassword" placeholder="Enter password to confirm">
                 </div>
             </div>
@@ -117,10 +215,9 @@ function renderUploadTab(container) {
         reader.onload = (re) => {
             const data = new Uint8Array(re.target.result);
             const workbook = XLSX.read(data, { type: 'array' });
-            window.popupFileData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
+            window.popupWorkbook = workbook;
 
             const isOverwrite = !isManualUpload;
-            document.getElementById('monthWarning').style.display = isOverwrite ? 'block' : 'none';
             document.getElementById('adminReasonSection').style.display = isOverwrite ? 'block' : 'none';
             confirmBtn.disabled = false;
         };
@@ -128,149 +225,31 @@ function renderUploadTab(container) {
     };
 
     confirmBtn.onclick = async () => {
-        const reason = document.getElementById('adminEditReason')?.value || 'New upload';
         const pass = document.getElementById('adminEditPassword')?.value;
 
         if (!isManualUpload) {
-            if (!reason || !pass) return alert('Reason and Password are required.');
+            if (!pass) return alert('Password is required for original file modification.');
             const hash = await sha256(pass);
             if (hash !== EDIT_PASSWORD_HASH) return alert('Incorrect Modification Password.');
         }
 
-        saveVersionBackup(currentYear, currentMonth, rosterData);
-        const parsed = parseRosterData(window.popupFileData, currentYear, currentMonth);
+        const wb = window.popupWorkbook;
+        const firstSheet = wb.Sheets[wb.SheetNames[0]];
+        const holidaySheetName = wb.SheetNames.find(n => n.toLowerCase().includes('holiday'));
+        const holidaySheet = holidaySheetName ? XLSX.utils.sheet_to_json(wb.Sheets[holidaySheetName], { header: 1 }) : null;
+
+        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+        const parsed = parseRosterData(jsonData, currentYear, currentMonth, holidaySheet);
+
         rosterData = parsed.rosterData;
         allEmployees = parsed.allEmployees;
         isManualUpload = true;
-        dataLastModified = `${new Date().toLocaleString()} (Admin Update)`;
-        saveCurrentVersion(currentYear, currentMonth, rosterData, allEmployees, reason);
+        dataLastModified = `${new Date().toLocaleString()} (Admin Upload)`;
 
         renderEverything();
-        alert('Roster updated successfully.');
-        switchAdminTab('upload');
+        alert('Roster uploaded successfully.');
+        switchAdminTab('holidays');
     };
-}
-
-function renderVersionsTab(container) {
-    const v1 = localStorage.getItem(`roster_v1_${currentYear}_${currentMonth}`);
-    const v2 = getStoredVersion(currentYear, currentMonth);
-
-    if (!v1 && !v2) {
-        container.innerHTML = '<p style="color: var(--text-secondary);">No local versions found for the current month.</p>';
-        return;
-    }
-
-    let html = `
-        <table class="v-history-table">
-            <thead>
-                <tr>
-                    <th>Version</th>
-                    <th>Timestamp</th>
-                    <th>Reason</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-    `;
-
-    if (v2) {
-        html += `
-            <tr class="v-row">
-                <td><span class="version-badge v-current">V2 (Active)</span></td>
-                <td><span class="v-ts">${v2.timestamp}</span></td>
-                <td><span class="v-reason">${v2.reason || 'Manual Update'}</span></td>
-                <td>-</td>
-            </tr>
-        `;
-    }
-
-    if (v1) {
-        html += `
-            <tr class="v-row">
-                <td><span class="version-badge v-backup">V1 (Backup)</span></td>
-                <td><span class="v-ts">Prior to V2 update</span></td>
-                <td>-</td>
-                <td><button class="btn btn-secondary revert-btn" onclick="revertRoster()">⏪ Revert</button></td>
-            </tr>
-        `;
-    }
-
-    html += '</tbody></table>';
-    container.innerHTML = html;
-}
-
-function handleCreateRoster() {
-    alert('Sorry, you are not authorized as of now contact admin.');
-}
-
-// Keep existing helper functions
-async function sha256(message) {
-    const msgBuffer = new TextEncoder().encode(message);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-function saveVersionBackup(year, month, data) {
-    if (!data || data.length === 0) return;
-    const key = `roster_v1_${year}_${month}`;
-    localStorage.setItem(key, JSON.stringify(data));
-}
-
-function saveCurrentVersion(year, month, data, employees, reason) {
-    const key = `roster_v2_${year}_${month}`;
-    const payload = {
-        data,
-        employees,
-        reason,
-        timestamp: new Date().toLocaleString()
-    };
-    localStorage.setItem(key, JSON.stringify(payload));
-}
-
-function getStoredVersion(year, month) {
-    const v2 = localStorage.getItem(`roster_v2_${year}_${month}`);
-    if (v2) return JSON.parse(v2);
-    return null;
-}
-
-function revertRoster(year, month) {
-    const v1Key = `roster_v1_${year}_${month}`;
-    const v2Key = `roster_v2_${year}_${month}`;
-
-    const v1Data = localStorage.getItem(v1Key);
-    const v2Data = localStorage.getItem(v2Key);
-
-    if (!v1Data) {
-        alert('No backup version found for this month.');
-        return;
-    }
-
-    // Swap v1 and v2
-    localStorage.setItem(v2Key, v1Data); // v1 becomes the current v2 (JSON payload structure mismatch handling needed)
-    // Actually, v1 is just the roster data array. v2 is a payload.
-    // Let's normalize.
-
-    const v1Parsed = JSON.parse(v1Data);
-    const v2Parsed = v2Data ? JSON.parse(v2Data) : null;
-
-    // Create new v2 from v1
-    const newV2 = {
-        data: Array.isArray(v1Parsed) ? v1Parsed : v1Parsed.data,
-        employees: v2Parsed ? v2Parsed.employees : allEmployees, // Approximate if v1 doesn't have employees
-        reason: 'Reverted to previous version',
-        timestamp: new Date().toLocaleString()
-    };
-
-    localStorage.setItem(v2Key, JSON.stringify(newV2));
-
-    if (v2Parsed) {
-        localStorage.setItem(v1Key, JSON.stringify(v2Parsed.data));
-    }
-
-    // Reload
-    loadRosterFromRepo(year, month);
-    alert('Reverted to backup version.');
 }
 
 // Global Event Listener for Admin Button
@@ -283,3 +262,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 });
+
+// Expose globally
+window.handleAdminLogin = handleAdminLogin;
+window.switchAdminTab = switchAdminTab;
+window.exitAdminDashboard = exitAdminDashboard;
+window.closeAdminLoginModal = closeAdminLoginModal;

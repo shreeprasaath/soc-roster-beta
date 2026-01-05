@@ -67,7 +67,7 @@
                     <button class="btn" onclick="scrollToCalendar()">📅 View Calendar</button>
                     <button class="btn" id="showChartBtn" onclick="showChartModal()" style="display: none;">📊 Show Pie
                         Chart</button>
-                    <button class="btn btn-secondary" onclick="downloadAllExcel()">📥 Download All</button>
+                    <button class="btn btn-secondary" id="downloadAllBtn">📥 Download All</button>
                     <button class="btn btn-secondary" id="downloadIndividualBtn" style="display: none;">👤 Download
                         Individual</button>
                 </div>
@@ -213,22 +213,23 @@
                     </div>
                 </div>
             </div>
-            <nav class="sidebar-nav">
-                <button class="nav-item active" onclick="switchAdminTab('upload')">
+            <nav class="admin-nav">
+                <div class="nav-item active" data-tab="upload" onclick="switchAdminTab('upload')">
                     <span class="nav-icon">📤</span> Upload Roster
-                </button>
-                <button class="nav-item" onclick="switchAdminTab('create')">
+                </div>
+                <div class="nav-item" data-tab="holidays" onclick="switchAdminTab('holidays')">
+                    <span class="nav-icon">🗓️</span> Manage Holidays
+                </div>
+                <div class="nav-item" data-tab="create" data-tab="create" onclick="switchAdminTab('create')">
                     <span class="nav-icon">➕</span> Create Roster
-                </button>
-                <button class="nav-item" onclick="switchAdminTab('versions')">
+                </div>
+                <div class="nav-item" data-tab="versions" onclick="switchAdminTab('versions')">
                     <span class="nav-icon">📜</span> Manage Versions
-                </button>
+                </div>
+                <div class="nav-item exit-nav" onclick="exitAdminDashboard()">
+                    <span class="nav-icon">🚪</span> Exit Dashboard
+                </div>
             </nav>
-            <div class="sidebar-footer">
-                <button class="btn btn-secondary exit-btn" onclick="exitAdminDashboard()">
-                    🚪 Exit Dashboard
-                </button>
-            </div>
         </aside>
 
         <main class="admin-main">

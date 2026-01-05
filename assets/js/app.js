@@ -32,11 +32,16 @@ function setupEventListeners() {
     // Buttons
     window.scrollToCalendar = () => document.getElementById('calendar').scrollIntoView({ behavior: 'smooth' });
     window.showChartModal = showChartModal;
-    window.downloadAllExcel = () => downloadAllExcel(rosterData, currentYear, currentMonth);
-    window.downloadIndividualExcel = () => {
+
+    // Explicitly bind download buttons
+    document.getElementById('downloadAllBtn')?.addEventListener('click', () => {
+        downloadAllExcel(rosterData, currentYear, currentMonth);
+    });
+
+    document.getElementById('downloadIndividualBtn')?.addEventListener('click', () => {
         const stats = calculateStats(allEmployees, rosterData);
         downloadIndividualExcel(selectedEmployee, stats, rosterData, currentYear, currentMonth);
-    };
+    });
 
     // Manual upload
     const uploadSection = document.getElementById('uploadSection');
@@ -79,23 +84,13 @@ function setupEventListeners() {
 async function loadRosterFromRepo(year, month) {
     showLoading();
     try {
-        // First check local storage for a newer version (v2)
-        const stored = getStoredVersion(year, month);
-        if (stored) {
-            rosterData = stored.data;
-            allEmployees = stored.employees || [];
-            isManualUpload = true;
-            dataLastModified = `${stored.timestamp} (Local Update)`;
-            window.activeEditReason = stored.reason;
-        } else {
-            const { jsonData, lastModified } = await fetchRoster(year, month, ROSTERS_PATH);
-            const parsed = parseRosterData(jsonData, year, month);
-            rosterData = parsed.rosterData;
-            allEmployees = parsed.allEmployees;
-            isManualUpload = false;
-            dataLastModified = lastModified;
-            window.activeEditReason = null;
-        }
+        const { jsonData, holidaySheet, lastModified } = await fetchRoster(year, month, ROSTERS_PATH);
+        const parsed = parseRosterData(jsonData, year, month, holidaySheet);
+        rosterData = parsed.rosterData;
+        allEmployees = parsed.allEmployees;
+        isManualUpload = false;
+        dataLastModified = lastModified;
+        window.activeEditReason = null;
 
         hideLoading();
         document.getElementById('uploadSection').style.display = 'none';
@@ -227,16 +222,9 @@ function renderEverything() {
     renderLastModified(dataLastModified, isManualUpload, window.activeEditReason);
 }
 
-window.closeAdminLoginModal = closeAdminLoginModal;
-window.handleAdminLogin = handleAdminLogin;
-window.exitAdminDashboard = exitAdminDashboard;
-window.switchAdminTab = switchAdminTab;
-window.revertRoster = () => {
-    if (confirm('Are you sure you want to revert to the backup version? The current version will become the backup.')) {
-        revertRoster(currentYear, currentMonth);
-        loadRosterFromRepo(currentYear, currentMonth); // Reload after revert
-    }
-};
+// End of state management
+window.downloadAllExcel = downloadAllExcel;
+window.downloadIndividualExcel = downloadIndividualExcel;
 
 function showDayDetails(dayIndex) {
     const day = rosterData[dayIndex];

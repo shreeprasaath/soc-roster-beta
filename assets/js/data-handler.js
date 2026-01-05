@@ -10,9 +10,26 @@ function parseNames(cellValue) {
         .filter(n => n && n.length > 0);
 }
 
-function parseRosterData(jsonData, year, month) {
+function parseRosterData(jsonData, year, month, holidaySheet = null) {
     const rosterData = [];
     const allEmployees = new Set();
+    const holidayDates = new Set();
+
+    // Parse holidays if sheet exists
+    if (holidaySheet) {
+        // Assume first column contains dates or numbersrepresenting day of month
+        holidaySheet.forEach(row => {
+            if (!row || row.length === 0) return;
+            const val = row[0];
+            if (!val) return;
+
+            if (val instanceof Date) {
+                holidayDates.add(val.getDate());
+            } else if (!isNaN(val)) {
+                holidayDates.add(parseInt(val));
+            }
+        });
+    }
 
     for (let i = 1; i < jsonData.length; i++) {
         const row = jsonData[i];
@@ -27,8 +44,6 @@ function parseRosterData(jsonData, year, month) {
 
         const dayNum = i;
         const date = new Date(year, month - 1, dayNum);
-
-        // Use local date string (YYYY-MM-DD) to avoid UTC shifts
         const localDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
         rosterData.push({
@@ -37,7 +52,8 @@ function parseRosterData(jsonData, year, month) {
             morning,
             afternoon,
             night,
-            weekOff
+            weekOff,
+            isHoliday: holidayDates.has(dayNum)
         });
     }
 
@@ -57,14 +73,17 @@ async function fetchRoster(year, month, rostersPath) {
     }
 
     const lastModified = response.headers.get('Last-Modified');
-
     const arrayBuffer = await response.arrayBuffer();
     const data = new Uint8Array(arrayBuffer);
     const workbook = XLSX.read(data, { type: 'array' });
 
     const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+    const holidaySheetName = workbook.SheetNames.find(n => n.toLowerCase().includes('holiday'));
+    const holidaySheet = holidaySheetName ? XLSX.utils.sheet_to_json(workbook.Sheets[holidaySheetName], { header: 1 }) : null;
+
     return {
         jsonData: XLSX.utils.sheet_to_json(firstSheet, { header: 1 }),
+        holidaySheet: holidaySheet,
         lastModified: lastModified ? new Date(lastModified).toLocaleString() : null
     };
 }

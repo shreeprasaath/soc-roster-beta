@@ -219,19 +219,5 @@ function renderLastModified(timestamp, isManual, reason) {
         html += `<div class="meta-reason" style="font-size: 0.7rem; margin-top: 0.25rem; font-style: italic;">Reason: ${reason}</div>`;
     }
 
-    // Check if backup exists to show Revert
-    const hasBackup = localStorage.getItem(`roster_v1_${currentYear}_${currentMonth}`);
-    const isAdmin = sessionStorage.getItem('isAdminAuthenticated') === 'true';
-
-    if (hasBackup && isAdmin) {
-        html += `
-            <div class="version-info">
-                <span class="version-badge v-current">Current: V2</span>
-                <span class="version-badge v-backup">Backup: V1</span>
-                <button class="btn btn-secondary revert-btn" onclick="revertRoster()">⏪ Revert to V1</button>
-            </div>
-        `;
-    }
-
     container.innerHTML = html;
 }

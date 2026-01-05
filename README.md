@@ -47,47 +47,39 @@ A modern, responsive, and secure web application for visualizing and managing Se
 
 ---
 
-## 📦 How to Push Code to GitHub
+---
 
-Follow these steps to push your code if you have a new, empty repository on GitHub and no local Git configuration.
+## 🤝 Contributing for Collaborators
 
-### 1. Initialize Git
-Open your terminal (Command Prompt, PowerShell, or Git Bash) in the project folder and run:
+If you would like to contribute to this project, please follow these steps:
+
+### 1. Fork the Project
+Click the **Fork** button at the top right of the repository page to create a copy of the project in your own GitHub account.
+
+### 2. Clone Your Fork
 ```bash
-git init
+git clone https://github.com/[YOUR_USERNAME]/[REPO_NAME].git
+cd [REPO_NAME]
 ```
 
-### 2. Prepare for GitHub
-Ensure you are on the `main` branch:
+### 3. Create a Feature Branch
 ```bash
-git branch -M main
+git checkout -b feature/AmazingFeature
 ```
 
-### 3. Add Your Files
-Stage all the project files for the first commit:
+### 4. Commit Your Changes
 ```bash
 git add .
+git commit -m "Add some AmazingFeature"
 ```
 
-### 4. Create Initial Commit
+### 5. Push to Your Fork
 ```bash
-git commit -m "Initial commit: SOC Shift Roster Viewer with Admin Features"
+git push origin feature/AmazingFeature
 ```
 
-### 5. Link to GitHub
-Replace `[YOUR_REPO_URL]` with the URL of your GitHub repository (e.g., `https://github.com/YourUsername/your-repo-name.git`):
-```bash
-git remote add origin [YOUR_REPO_URL]
-```
-
-### 6. Push to GitHub
-Upload your files to the `main` branch:
-```bash
-git push -u origin main
-```
-
-> [!TIP]
-> **GitHub Pages Deployment**: To host the app for free, go to your Repository Settings > Pages. Select the `main` branch as the source and click Save. Your site will be live at `https://[YourUsername].github.io/[your-repo-name]/`.
+### 6. Open a Pull Request
+Go to the original repository on GitHub and click the **New Pull Request** button.
 
 ---
 

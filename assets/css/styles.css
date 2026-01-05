@@ -1021,6 +1021,80 @@ body {
     color: var(--text-secondary);
 }
 
+/* Admin Holiday Picker */
+.holiday-grid-admin {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.holiday-picker-item {
+    background: var(--bg-card);
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    user-select: none;
+}
+
+.holiday-picker-item:hover {
+    border-color: var(--accent-light);
+    transform: translateY(-2px);
+}
+
+.holiday-picker-item.selected {
+    background: var(--holiday-bg);
+    border-color: var(--holiday-color);
+}
+
+.holiday-picker-item.selected span {
+    color: var(--holiday-color);
+    font-weight: 700;
+}
+
+.holiday-picker-item span {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.holiday-picker-item small {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+
+@media (max-width: 768px) {
+    .admin-dashboard-page {
+        flex-direction: column;
+    }
+
+    .admin-sidebar {
+        width: 100%;
+        height: auto;
+        padding: 1rem;
+    }
+
+    .admin-nav {
+        flex-direction: row;
+        overflow-x: auto;
+        padding-bottom: 0.5rem;
+    }
+
+    .nav-item {
+        white-space: nowrap;
+    }
+
+    .holiday-grid-admin {
+        grid-template-columns: repeat(5, 1fr);
+    }
+}
+
 @media (max-width: 1024px) {
     .admin-dashboard-page {
         flex-direction: column;

@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SOC Shift Roster Viewer</title>
+    <!-- Fonts -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap"
+        rel="stylesheet">
+    <!-- External Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+
+<body>
+    <div class="header">
+        <div class="header-actions">
+            <div class="theme-toggle">
+                <button class="theme-btn active" id="darkBtn">🌙 Dark</button>
+                <button class="theme-btn" id="lightBtn">☀️ Light</button>
+            </div>
+            <button class="admin-btn" id="adminBtn" title="Admin Login">🔒</button>
+        </div>
+        <h1>🛡️ SOC Shift Roster Viewer</h1>
+        <p>Security Operations Center Schedule</p>
+    </div>
+
+    <div class="container">
+        <!-- Loading Screen -->
+        <div class="loading-screen" id="loadingScreen">
+            <div class="spinner"></div>
+            <div class="loading-text">Loading roster...</div>
+        </div>
+
+        <!-- Upload Section -->
+        <div class="upload-section" id="uploadSection" style="display: none;">
+            <div class="upload-icon">📤</div>
+            <div class="upload-text">Click or drag Excel file to upload</div>
+            <div class="upload-hint">Supports .xlsx and .xls files • Not saved to repository</div>
+            <input type="file" id="fileInput" accept=".xlsx,.xls">
+        </div>
+
+        <!-- Main Content -->
+        <div class="content" id="mainContent">
+            <!-- Month Navigation -->
+            <div class="month-navigation">
+                <button class="month-nav-btn" id="prevBtn">⬅️ Previous</button>
+                <div class="current-month" id="currentMonthDisplay">January 2026</div>
+                <button class="month-nav-btn" id="nextBtn">Next ➡️</button>
+            </div>
+
+            <!-- Data Metadata Info -->
+            <div id="dataMetaInfo" class="data-meta-info"></div>
+
+            <div class="controls">
+                <div class="employee-selector">
+                    <label>Filter by Employee:</label>
+                    <select id="employeeSelect">
+                        <option value="all">All Employees</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                    <button class="btn" onclick="scrollToCalendar()">📅 View Calendar</button>
+                    <button class="btn" id="showChartBtn" onclick="showChartModal()" style="display: none;">📊 Show Pie
+                        Chart</button>
+                    <button class="btn btn-secondary" onclick="downloadAllExcel()">📥 Download All</button>
+                    <button class="btn btn-secondary" id="downloadIndividualBtn" style="display: none;">👤 Download
+                        Individual</button>
+                </div>
+            </div>
+
+            <div id="summary" class="summary"></div>
+            <div id="employeeStats" class="employee-grid"></div>
+
+            <div id="calendar" class="calendar">
+                <div class="calendar-header">
+                    <h2 id="calendarTitle">Calendar</h2>
+                </div>
+                <div class="calendar-grid" id="calendarGrid"></div>
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: var(--morning);"></div>
+                        <span>Morning (6 AM - 3 PM)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: var(--afternoon);"></div>
+                        <span>Afternoon (2 PM - 11 PM)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: var(--night);"></div>
+                        <span>Night (10 PM - 7 AM)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: var(--off);"></div>
+                        <span>Day Off</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color"
+                            style="background: var(--holiday-bg); border: 2px solid var(--holiday);"></div>
+                        <span>Public Holiday</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Day Details Modal -->
+    <div class="modal" id="dayModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title" id="modalTitle">Day Details</div>
+                <button class="modal-close" onclick="closeDayModal()">&times;</button>
+            </div>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <!-- Pie Chart Modal -->
+    <div class="modal" id="chartModal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <div class="modal-title" id="chartModalTitle">Shift Distribution</div>
+                <button class="modal-close" onclick="closeChartModal()">&times;</button>
+            </div>
+            <div style="position: relative; height: 300px;">
+                <canvas id="shiftChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Month/Year Input Modal -->
+    <div class="modal" id="dateModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Enter Month & Year</div>
+            </div>
+            <div class="date-input-group">
+                <label style="color: var(--text-secondary); font-weight: 600;">Month:</label>
+                <select id="monthInput">
+                    <option value="1">January</option>
+                    <option value="2">February</option>
+                    <option value="3">March</option>
+                    <option value="4">April</option>
+                    <option value="5">May</option>
+                    <option value="6">June</option>
+                    <option value="7">July</option>
+                    <option value="8">August</option>
+                    <option value="9">September</option>
+                    <option value="10">October</option>
+                    <option value="11">November</option>
+                    <option value="12">December</option>
+                </select>
+
+                <label style="color: var(--text-secondary); font-weight: 600;">Year:</label>
+                <input type="number" id="yearInput" min="2020" max="2100" value="2026" placeholder="Enter year">
+
+                <button class="btn" onclick="confirmDateManual()" style="margin-top: 1rem;">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Holiday Selection Modal -->
+    <div class="modal" id="holidayModal">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <div class="modal-title">Select Public Holidays</div>
+            </div>
+            <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">Pick the dates that are public holidays for
+                this month.</p>
+            <div id="holidayGrid" class="holiday-grid"></div>
+            <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                <button class="btn btn-secondary" onclick="confirmHolidays()">Continue</button>
+            </div>
+        </div>
+    </div>
+
+    </div>
+
+    <!-- Admin Login Modal (Still a modal for entry) -->
+    <div class="modal" id="adminLoginModal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <div class="modal-title">Admin Login</div>
+                <button class="modal-close" onclick="closeAdminLoginModal()">&times;</button>
+            </div>
+            <div class="admin-form">
+                <div class="input-group">
+                    <label>Username</label>
+                    <input type="text" id="adminUsername" placeholder="Enter username">
+                </div>
+                <div class="input-group">
+                    <label>Password</label>
+                    <input type="password" id="adminPassword" placeholder="Enter password">
+                </div>
+                <button class="btn" onclick="handleAdminLogin()" style="width: 100%; margin-top: 1rem;">Login</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Full Page Admin Dashboard -->
+    <div id="adminDashboardPage" class="admin-dashboard-page" style="display: none;">
+        <aside class="admin-sidebar">
+            <div class="sidebar-header">
+                <div class="admin-profile">
+                    <div class="admin-avatar">A</div>
+                    <div class="admin-info">
+                        <span class="admin-name">Admin</span>
+                        <span class="admin-status">Connected</span>
+                    </div>
+                </div>
+            </div>
+            <nav class="sidebar-nav">
+                <button class="nav-item active" onclick="switchAdminTab('upload')">
+                    <span class="nav-icon">📤</span> Upload Roster
+                </button>
+                <button class="nav-item" onclick="switchAdminTab('create')">
+                    <span class="nav-icon">➕</span> Create Roster
+                </button>
+                <button class="nav-item" onclick="switchAdminTab('versions')">
+                    <span class="nav-icon">📜</span> Manage Versions
+                </button>
+            </nav>
+            <div class="sidebar-footer">
+                <button class="btn btn-secondary exit-btn" onclick="exitAdminDashboard()">
+                    🚪 Exit Dashboard
+                </button>
+            </div>
+        </aside>
+
+        <main class="admin-main">
+            <header class="admin-main-header">
+                <h2 id="adminTabTitle">Upload Roster</h2>
+            </header>
+
+            <div id="adminTabContent" class="admin-tab-content">
+                <!-- Content injected via JS -->
+            </div>
+        </main>
+    </div>
+
+    <div class="footer">
+        <p>SOC Shift Management System | Flexible Fairness Algorithm</p>
+        <p id="footerTimestamp" style="margin-top: 0.5rem; font-size: 0.75rem;">⚡ Automatic loading from repository |
+            Manual upload available</p>
+    </div>
+
+    <!-- Main Logic - scripts loaded in order -->
+    <script src="assets/js/theme.js"></script>
+    <script src="assets/js/data-handler.js"></script>
+    <script src="assets/js/stats-engine.js"></script>
+    <script src="assets/js/ui-renderers.js"></script>
+    <script src="assets/js/admin-handler.js"></script>
+    <script src="assets/js/export-handler.js"></script>
+    <script src="assets/js/app.js"></script>
+</body>
+
+</html>

@@ -6,14 +6,12 @@
 > - `git push -f origin main`
 
 > [!IMPORTANT]
-> **FOOLPROOF PUSH (Run these 6 lines one by one):**
-> 1. `git init`
-> 2. `git config user.email "shreeprasaath002@gmail.com"`
-> 3. `git config user.name "shreeprasaath"`
-> 4. `git add .`
-> 5. `git commit -m "First commit"`
-> 6. `git branch -M main`
-> 7. `git push -u origin main`
+> **FOOLPROOF PUSH (Run these one by one):**
+> 1. `git add .`
+> 2. `git commit -m "Final Update: Stateless Holidays & File Versioning"`
+> 3. `git push origin main`
+>
+> *Note: I've added `.gitkeep` files to your new `/originals/` and `/backups/` folders so they appear on GitHub even when empty.*
 
 > [!CAUTION]
 > If Step 7 says "src refspec main does not match any", it means Step 5 (the commit) didn't happen. Check for any error messages in your terminal after Step 5!
